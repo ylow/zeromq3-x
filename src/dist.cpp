@@ -91,6 +91,7 @@ void zmq::dist_t::terminated (pipe_t *pipe_)
 
 void zmq::dist_t::activated (pipe_t *pipe_)
 {
+    if (pipes.index (pipe_) < eligible) return;
     //  Move the pipe from passive to eligible state.
     pipes.swap (pipes.index (pipe_), eligible);
     eligible++;
@@ -117,6 +118,7 @@ int zmq::dist_t::send_to_matching (msg_t *msg_, int flags_)
     //  Push the message to matching pipes.
     distribute (msg_, flags_);
 
+
     //  If mutlipart message is fully sent, activate all the eligible pipes.
     if (!msg_more)
         active = eligible;
@@ -124,6 +126,17 @@ int zmq::dist_t::send_to_matching (msg_t *msg_, int flags_)
     more = msg_more;
 
     return 0;
+}
+
+bool zmq::dist_t::check_write_on_matching (msg_t *msg_, int flags_)
+{
+    // returns true if every pipe I am writing to is writeable
+    bool writeable = true;
+    for (pipes_t::size_type i = 0; i < matching; ++i) {
+        writeable &= pipes [i]->check_write ();
+    }
+
+    return writeable;
 }
 
 void zmq::dist_t::distribute (msg_t *msg_, int flags_)

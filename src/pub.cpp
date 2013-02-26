@@ -44,6 +44,15 @@ bool zmq::pub_t::xhas_in ()
     return false;
 }
 
+
+int zmq::pub_t::xsetsockopt (int option_, const void *optval_, size_t optvallen_) {
+    if (option_ == ZMQ_PUB_NODROP) {
+        return xpub_t::xsetsockopt(option_, optval_, optvallen_);
+    }
+    errno = EINVAL;
+    return -1;
+}
+
 zmq::pub_session_t::pub_session_t (io_thread_t *io_thread_, bool connect_,
       socket_base_t *socket_, const options_t &options_,
       const address_t *addr_) :

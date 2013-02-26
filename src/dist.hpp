@@ -57,6 +57,9 @@ namespace zmq
         //  Removes the pipe from the distributor object.
         void terminated (zmq::pipe_t *pipe_);
 
+        //  Checks if the write will succeed
+        bool check_write_on_matching (zmq::msg_t *msg_, int flags_);
+
         //  Send the message to the matching outbound pipes.
         int send_to_matching (zmq::msg_t *msg_, int flags_);
 

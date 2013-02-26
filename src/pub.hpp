@@ -42,6 +42,7 @@ namespace zmq
         //  Implementations of virtual functions from socket_base_t.
         int xrecv (zmq::msg_t *msg_, int flags_);
         bool xhas_in ();
+        int xsetsockopt (int option_, const void *optval_, size_t optvallen_);
 
     private:
 

@@ -29,7 +29,8 @@
 zmq::xpub_t::xpub_t (class ctx_t *parent_, uint32_t tid_, int sid_) :
     socket_base_t (parent_, tid_, sid_),
     verbose(false),
-    more (false)
+    more (false),
+    nodrop(false)
 {
     options.type = ZMQ_XPUB;
 }
@@ -87,16 +88,29 @@ void zmq::xpub_t::xwrite_activated (pipe_t *pipe_)
 int zmq::xpub_t::xsetsockopt (int option_, const void *optval_,
     size_t optvallen_)
 {
-    if (option_ != ZMQ_XPUB_VERBOSE) {
+    if (option_ == ZMQ_XPUB_VERBOSE) {
+        if (optvallen_ != sizeof (int) || 
+            *static_cast <const int*> (optval_) < 0) {
+            errno = EINVAL;
+            return -1;
+        }
+        verbose = *static_cast <const int*> (optval_);
+        return 0;
+    }
+    else if (option_ == ZMQ_XPUB_NODROP) {
+        if (optvallen_ != sizeof (int) || 
+            *static_cast <const int*> (optval_) < 0) {
+            errno = EINVAL;
+            return -1;
+        }
+        nodrop = *static_cast <const int*> (optval_);
+        if (nodrop) printf("nodrop\n");
+        return 0;
+    }
+    else {
         errno = EINVAL;
         return -1;
     }
-    if (optvallen_ != sizeof (int) || *static_cast <const int*> (optval_) < 0) {
-        errno = EINVAL;
-        return -1;
-    }
-    verbose = *static_cast <const int*> (optval_);
-    return 0;
 }
 
 void zmq::xpub_t::xterminated (pipe_t *pipe_)
@@ -120,10 +134,18 @@ int zmq::xpub_t::xsend (msg_t *msg_, int flags_)
     bool msg_more = msg_->flags () & msg_t::more ? true : false;
 
     //  For the first part of multi-part message, find the matching pipes.
-    if (!more)
+    if (!more) {
         subscriptions.match ((unsigned char*) msg_->data (), msg_->size (),
             mark_as_matching, this);
+    }
 
+    if (nodrop) {
+        if (!dist.check_write_on_matching (msg_, flags_))  {
+            dist.unmatch();
+            errno = EAGAIN;
+            return -1;
+        }
+    }
     //  Send the message to all the pipes that were marked as matching
     //  in the previous step.
     int rc = dist.send_to_matching (msg_, flags_);
